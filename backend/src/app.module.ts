@@ -9,9 +9,8 @@ import { ComprobantesModule } from './comprobantes/comprobantes.module';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 const configModule = ConfigModule.forRoot({ isGlobal: true });
 const databaseModules =
-  process.env.DATABASE_ENABLED === 'false'
-    ? []
-    : [
+  process.env.DATABASE_ENABLED === 'true'
+    ? [
         TypeOrmModule.forRootAsync({
           imports: [ConfigModule],
           inject: [ConfigService],
@@ -26,7 +25,8 @@ const databaseModules =
             synchronize: false,
           }),
         }),
-      ];
+      ]
+    : [];
 
 @Module({
   imports: [

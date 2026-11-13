@@ -53,11 +53,10 @@ Requisito: Node.js 20 o superior. Abre dos terminales desde la raíz del reposit
 
 ```powershell
 cd backend
-$env:DATABASE_ENABLED = "false"
 npm run start:dev
 ```
 
-`DATABASE_ENABLED=false` omite TypeORM para usar el endpoint de generación XML sin PostgreSQL local. Si no se define o tiene otro valor, el backend conserva la conexión PostgreSQL configurada en `backend/.env`.
+PostgreSQL está desactivado por defecto para poder usar el endpoint de generación XML sin una base local. Para activarlo, configura `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD` y `DATABASE_NAME` en `backend/.env`, y define `$env:DATABASE_ENABLED = "true"` antes de iniciar el backend.
 
 **Terminal 2 — frontend Vite**
 
