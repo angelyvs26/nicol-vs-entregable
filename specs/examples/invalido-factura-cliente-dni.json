@@ -1,0 +1,18 @@
+{
+  "customer": {
+    "documentType": "1",
+    "documentNumber": "12345678",
+    "legalName": "Cliente de ejemplo"
+  },
+  "series": "F001",
+  "correlative": "126",
+  "currency": "PEN",
+  "items": [
+    {
+      "description": "Producto gravado",
+      "quantity": 1,
+      "unitSaleValue": 20,
+      "igvAffectationCode": "10"
+    }
+  ]
+}

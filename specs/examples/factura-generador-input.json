@@ -1,0 +1,34 @@
+{
+  "documentId": "F001-123",
+  "issueDate": "2026-11-12",
+  "issueTime": "13:25:51",
+  "operationType": "0101",
+  "issuer": {
+    "ruc": "20512345671",
+    "legalName": "Emisor de ejemplo S.A.C.",
+    "tradeName": "Comercial de ejemplo"
+  },
+  "invoice": {
+    "customer": {
+      "documentType": "6",
+      "documentNumber": "20601234565",
+      "legalName": "Cliente de ejemplo S.A.C."
+    },
+    "series": "F001",
+    "correlative": "123",
+    "currency": "PEN",
+    "items": [
+      {
+        "productCode": "ABR-001",
+        "description": "Producto gravado de ejemplo",
+        "quantity": 2,
+        "unitCode": "NIU",
+        "unitSaleValue": 50,
+        "igvAffectationCode": "10"
+      }
+    ],
+    "paymentForm": {
+      "type": "Contado"
+    }
+  }
+}

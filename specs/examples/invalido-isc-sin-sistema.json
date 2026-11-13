@@ -1,0 +1,19 @@
+{
+  "customer": {
+    "documentType": "6",
+    "documentNumber": "20123456789",
+    "legalName": "Comercial Ejemplo S.A.C."
+  },
+  "series": "F001",
+  "correlative": "128",
+  "currency": "PEN",
+  "items": [
+    {
+      "description": "Producto con ISC sin sistema declarado",
+      "quantity": 1,
+      "unitSaleValue": 100,
+      "igvAffectationCode": "10",
+      "iscRate": 15
+    }
+  ]
+}

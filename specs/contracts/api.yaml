@@ -1,0 +1,714 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
+info:
+  title: ABC Software Corp — API de facturación electrónica
+  version: 0.1.0-draft
+  summary: Contrato de endpoints del monolito MVC (entregable 3).
+  description: |
+    Contrato API de la fase Spec-First. Los DTOs son JSON Schema draft 2020-12 en
+    `specs/contracts/schemas/` y se referencian con `$ref`. Nombres de campos en inglés
+    `camelCase`; códigos de catálogo SUNAT literales; estados en español.
+
+    Trazabilidad: casos de uso en `specs/use-cases/casos-de-uso.md`, requisitos FR en
+    `specs/features/001-emitir-factura.md` a `specs/features/004-anular-comprobante.md`, invariantes INV en `specs/domain/modelo-dominio.md`,
+    cruce SUNAT ↔ UBL en `specs/traceability/matriz-sunat-ubl.md`.
+
+    Códigos de estado comunes:
+    - `400`: estructura, formato o código de catálogo inválido (validación de esquema y objetos de valor).
+    - `409`: conflicto con el estado actual (correlativo duplicado, transición de estado no permitida).
+    - `422`: datos bien formados que violan una regla tributaria o de negocio (p. ej. parámetro tributario
+      no configurado, serie inactiva).
+
+    Paginación de listados, versionado y límites de tasa: **Pendiente de definir**.
+  contact:
+    name: Campos Flores Elida Andrea
+
+servers:
+  - url: http://localhost:3000
+    description: Desarrollo local (URL de despliegue Pendiente de definir)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Comprobantes
+    description: Emisión, consulta, anulación y envío de comprobantes electrónicos (UC-01 a UC-08, UC-12, UC-13).
+  - name: Clientes
+    description: Gestión de clientes (UC-09).
+  - name: Productos
+    description: Gestión de productos e impuestos (UC-10).
+  - name: Series
+    description: Gestión de series y correlativos (UC-11).
+  - name: Migraciones
+    description: Migración de datos del sistema legado de almacén (UC-16).
+
+paths:
+  /api/v1/comprobantes/facturas:
+    post:
+      operationId: createInvoice
+      summary: Emitir factura electrónica
+      tags: [Comprobantes]
+      description: |
+        UC-01 (y UC-05 para el envío). Valida cliente, serie, correlativo, moneda y tributos; calcula
+        IGV, ISC e ICBPER; registra la factura (Cat. 01 `01`, `cbc:InvoiceTypeCode`), genera y firma el XML
+        e inicia el envío a SUNAT/OSE.
+        Requisitos: FR-1 a FR-12. Si el destino no responde, el comprobante queda en `PENDIENTE_ENVIO` (FR-10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/create-invoice.request.schema.json'
+      responses:
+        '201':
+          description: Factura registrada. El estado indica el resultado del envío (`PENDIENTE_ENVIO`, `ENVIADO`, `ACEPTADO`, `RECHAZADO`).
+          headers:
+            Location:
+              description: URL del comprobante creado.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/invoice.response.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: El correlativo ya fue usado en la serie (INV-04, FR-3).
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+              example:
+                code: DUPLICATE_CORRELATIVE
+                message: El correlativo 123 ya existe en la serie F001.
+                field: correlative
+        '422':
+          description: |
+            La solicitud está bien formada pero viola una regla tributaria o de negocio: serie inactiva,
+            parámetro tributario no configurado (tasa ISC, monto ICBPER), afectación del Cat. 07 aún no
+            soportada (INV-04, INV-09, INV-10, INV-11).
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+              example:
+                code: TAX_PARAMETER_NOT_CONFIGURED
+                message: No hay un monto ICBPER por unidad configurado (Catálogo 05 código 7152).
+                field: items[0].icbperQuantity
+
+  /api/v1/comprobantes/boletas:
+    post:
+      operationId: createReceipt
+      summary: Emitir boleta electrónica
+      tags: [Comprobantes]
+      description: |
+        UC-02 (y UC-05 para el envío). Valida cliente con DNI (Cat. 06 `1`) o sin documento (supuesto provisional: Cat. 06 `0`),
+        serie B, correlativo, moneda y tributos; calcula IGV, ISC e ICBPER; registra la boleta (Cat. 01 `03`,
+        `cbc:InvoiceTypeCode`) e inicia el envío a SUNAT/OSE. Para Cat. 06 código `0`, `documentNumber` se omite;
+        oficialmente el código `0` es "doc. tributario no domiciliado sin RUC", así que el código correcto para
+        una boleta sin documento queda Pendiente de verificar.
+        Requisitos: FEAT-002 FR-1 a FR-10. Si el destino no responde, el comprobante queda `PENDIENTE_ENVIO`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/create-receipt.request.schema.json'
+      responses:
+        '201':
+          description: Boleta registrada. El estado indica el resultado del envío (`PENDIENTE_ENVIO`, `ENVIADO`, `ACEPTADO`, `RECHAZADO`).
+          headers:
+            Location:
+              description: URL del comprobante creado.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/receipt.response.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: El correlativo ya fue usado en la serie.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+        '422':
+          description: La solicitud está bien formada pero viola una regla tributaria o de negocio, por ejemplo, falta configurar el monto unitario ICBPER.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+
+  /api/v1/comprobantes/notas-credito:
+    post:
+      operationId: createCreditNote
+      summary: Emitir nota de crédito
+      tags: [Comprobantes]
+      description: |
+        UC-03. Requiere un comprobante original existente y genera un documento UBL CreditNote.
+        Motivo según Catálogo 09 (códigos 01-13, RS 000165-2021) en cac:DiscrepancyResponse/cbc:ResponseCode;
+        el sustento va en cbc:Description y la serie-correlativo del original en cbc:ReferenceID.
+        Requisitos: FEAT-003 FR-1 a FR-4.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/create-credit-note.request.schema.json'
+      responses:
+        '201':
+          description: Nota de crédito registrada para envío.
+          headers:
+            Location:
+              description: URL de la nota creada.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/note.response.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: La nota viola una regla de negocio o tributaria; por ejemplo, un motivo del Catálogo 09 incompatible con el comprobante original.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+
+  /api/v1/comprobantes/notas-debito:
+    post:
+      operationId: createDebitNote
+      summary: Emitir nota de débito
+      tags: [Comprobantes]
+      description: |
+        UC-04. Requiere un comprobante original existente y genera un documento UBL DebitNote.
+        Motivo según Catálogo 10 (códigos 01-03, RS 245-2017) en cac:DiscrepancyResponse/cbc:ResponseCode;
+        el sustento va en cbc:Description y la serie-correlativo del original en cbc:ReferenceID.
+        Requisitos: FEAT-003 FR-1 a FR-3 y FR-5.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/create-debit-note.request.schema.json'
+      responses:
+        '201':
+          description: Nota de débito registrada para envío.
+          headers:
+            Location:
+              description: URL de la nota creada.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/note.response.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: La nota viola una regla de negocio o tributaria; por ejemplo, un motivo del Catálogo 10 incompatible con el comprobante original.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+
+  /api/v1/comprobantes/{id}/anulaciones:
+    parameters:
+      - $ref: '#/components/parameters/ComprobanteId'
+    post:
+      operationId: requestComprobanteCancellation
+      summary: Solicitar anulación de un comprobante
+      tags: [Comprobantes]
+      description: |
+        UC-08 / FEAT-004. Para factura solicita comunicación de baja; para boleta solicita inclusión
+        en resumen diario. Los plazos, catálogos y estructura normativa de ambos mecanismos son
+        Pendiente de verificar. Una respuesta 202 confirma la recepción de la solicitud, no la anulación.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/cancel-comprobante.request.schema.json'
+      responses:
+        '202':
+          description: Solicitud registrada para procesamiento; el comprobante no se considera anulado hasta recibir confirmación válida.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/cancellation.response.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El estado actual del comprobante no admite una solicitud de anulación.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+        '422':
+          description: El tipo de comprobante o una regla de negocio no permite preparar la solicitud.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+
+  /api/v1/comprobantes:
+    get:
+      operationId: listComprobantes
+      summary: Listar comprobantes con filtros
+      tags: [Comprobantes]
+      description: |
+        UC-07 (consultar estado) y UC-12 (consultas y reportes). Filtra por estado, rango de fechas de
+        emisión (`cbc:IssueDate`) y tipo de comprobante (Cat. 01, `cbc:InvoiceTypeCode`). Relacionado con FR-10.
+        Paginación: **Pendiente de definir**.
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          description: Estado del comprobante (modelo-dominio.md §3).
+          schema:
+            type: string
+            enum: [BORRADOR, PENDIENTE_ENVIO, ENVIADO, ACEPTADO, RECHAZADO, ANULADO]
+        - name: desde
+          in: query
+          required: false
+          description: Fecha de emisión mínima, inclusive (ISO 8601).
+          schema:
+            type: string
+            format: date
+        - name: hasta
+          in: query
+          required: false
+          description: Fecha de emisión máxima, inclusive (ISO 8601). Debe ser mayor o igual que `desde`.
+          schema:
+            type: string
+            format: date
+        - name: tipo
+          in: query
+          required: false
+          description: 'Tipo de comprobante, Catálogo 01 (`cbc:InvoiceTypeCode`): factura `01` o boleta `03`.'
+          schema:
+            type: string
+            enum: ['01', '03']
+      responses:
+        '200':
+          description: Lista de comprobantes que cumplen los filtros.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: './schemas/invoice.response.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/comprobantes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ComprobanteId'
+    get:
+      operationId: getComprobante
+      summary: Consultar un comprobante
+      tags: [Comprobantes]
+      description: UC-07. Devuelve el comprobante con sus totales y su estado actual (FR-9, FR-10).
+      responses:
+        '200':
+          description: Comprobante encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/invoice.response.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/comprobantes/{id}/envios:
+    parameters:
+      - $ref: '#/components/parameters/ComprobanteId'
+    post:
+      operationId: resendComprobante
+      summary: Reintentar el envío de un comprobante
+      tags: [Comprobantes]
+      description: |
+        UC-06 (reintentar envíos pendientes) y UC-05 (enviar y recibir CDR). Solo para comprobantes en
+        `PENDIENTE_ENVIO` o `ENVIADO` (consulta de ticket). Registra un `EnvioComprobante`; si llega CDR,
+        el comprobante pasa a `ACEPTADO` o `RECHAZADO` según
+        `ApplicationResponse/cac:DocumentResponse/cac:Response/cbc:ResponseCode` (FR-10, INV-15, INV-16).
+      responses:
+        '200':
+          description: Intento registrado con su resultado (puede ser `SIN_RESPUESTA`).
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/submission.response.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El estado actual no admite envío (p. ej. `ACEPTADO`, `RECHAZADO`, `ANULADO`, `BORRADOR`) (INV-16).
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/error.response.schema.json'
+              example:
+                code: INVALID_STATUS_TRANSITION
+                message: El comprobante está ACEPTADO y no puede reenviarse.
+                field: null
+
+  /api/v1/comprobantes/{id}/archivos/{tipo}:
+    parameters:
+      - $ref: '#/components/parameters/ComprobanteId'
+      - name: tipo
+        in: path
+        required: true
+        description: Tipo de archivo. XML firmado (`Invoice`), PDF (representación impresa) o CDR (`ApplicationResponse`).
+        schema:
+          type: string
+          enum: [XML, PDF, CDR]
+    get:
+      operationId: downloadComprobanteFile
+      summary: Descargar PDF, XML o CDR
+      tags: [Comprobantes]
+      description: |
+        UC-13 (descargar PDF, XML y CDR) y UC-15 (formato Ticket/A4 del PDF). Devuelve el
+        `ArchivoComprobante` del tipo pedido. El XML contiene la firma (`ext:UBLExtensions`, `cac:Signature`, INV-14);
+        el CDR solo existe tras una respuesta de SUNAT/OSE (FR-10). Empaquetado del CDR (XML o ZIP):
+        **Pendiente de verificar**.
+      parameters:
+        - name: formato
+          in: query
+          required: false
+          description: Solo para `tipo=PDF`. Formato de la representación impresa (UC-15).
+          schema:
+            type: string
+            enum: [A4, TICKET]
+            default: A4
+      responses:
+        '200':
+          description: Contenido del archivo.
+          content:
+            application/xml:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                contentMediaType: application/pdf
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/clientes:
+    post:
+      operationId: createCustomer
+      summary: Registrar cliente
+      tags: [Clientes]
+      description: |
+        UC-09. Valida el tipo de documento (Cat. 06, `@schemeID` de `cac:PartyIdentification/cbc:ID`):
+        RUC de 11 dígitos con dígito verificador (algoritmo **Pendiente de verificar**) o DNI de 8 dígitos.
+        Requisito relacionado: FR-2 (INV-02).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/customer.schema.json'
+      responses:
+        '201':
+          description: Cliente registrado.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/customer.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      operationId: listCustomers
+      summary: Listar o buscar clientes
+      tags: [Clientes]
+      description: UC-09. Busca clientes por número de documento (FR-2). Paginación **Pendiente de definir**.
+      parameters:
+        - name: documentNumber
+          in: query
+          required: false
+          description: Número de documento exacto (`cac:PartyIdentification/cbc:ID`).
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Clientes encontrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: './schemas/customer.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/productos:
+    post:
+      operationId: createProduct
+      summary: Registrar producto con su configuración tributaria
+      tags: [Productos]
+      description: |
+        UC-10. Registra afectación IGV (Cat. 07, `cbc:TaxExemptionReasonCode`), sistema ISC
+        (Cat. 08, `cbc:TierRange`) y si aplica ICBPER (Cat. 05 `7152`). Requisitos relacionados:
+        FR-5, FR-6, FR-12 (INV-07, INV-08, INV-11).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/product.schema.json'
+      responses:
+        '201':
+          description: Producto registrado.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/product.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      operationId: listProducts
+      summary: Listar productos
+      tags: [Productos]
+      description: UC-10. Lista productos, opcionalmente filtrados por código interno o estado. Relacionado con FR-5 y FR-6.
+      parameters:
+        - name: code
+          in: query
+          required: false
+          description: Código interno (`cac:SellersItemIdentification/cbc:ID`).
+          schema:
+            type: string
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Productos encontrados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: './schemas/product.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/series:
+    get:
+      operationId: listSeries
+      summary: Listar series
+      tags: [Series]
+      description: UC-11. Lista las series con su último correlativo (`cbc:ID`). Relacionado con FR-3 (INV-04).
+      responses:
+        '200':
+          description: Series configuradas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: './schemas/series.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createSeries
+      summary: Registrar serie
+      tags: [Series]
+      description: |
+        UC-11. Registra una serie para un tipo de comprobante (Cat. 01). Factura: `F` + 3 alfanuméricos;
+        boleta: `B` + 3 alfanuméricos (FEAT-001 FR-3, FEAT-002 FR-3, INV-04).
+        Secuencia y unicidad normativa: **Pendiente de verificar**.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/series.schema.json'
+      responses:
+        '201':
+          description: Serie registrada.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/series.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/migraciones:
+    post:
+      operationId: startMigration
+      summary: Iniciar un lote de migración del legado
+      tags: [Migraciones]
+      description: |
+        UC-16. Importa filas con `fecha`, `ingreso`, `salida`, `producto` y `nro_documento`. Cada fila se
+        guarda como `RegistroLegado`; las válidas generan `MovimientoAlmacen` (UC-17) y las demás quedan
+        `PENDIENTE_REVISION`, nunca se descartan (`specs/domain/mapeo-legado.md`). No genera comprobantes
+        electrónicos, por lo que no aplica ningún FR de `001-emitir-factura.md`. Formato del archivo
+        (CSV u otro) y codificación: **Pendiente de verificar**.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/octet-stream
+                  description: Archivo exportado del sistema legado.
+      responses:
+        '202':
+          description: Lote aceptado para procesamiento.
+          headers:
+            Location:
+              description: URL del lote (`/api/v1/migraciones/{lote}`).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/migration.response.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/migraciones/{lote}:
+    get:
+      operationId: getMigration
+      summary: Consultar un lote de migración
+      tags: [Migraciones]
+      description: |
+        UC-16. Devuelve el conteo del lote (leídas = MIGRADO + PENDIENTE_REVISION) y el detalle de
+        registros con sus datos originales y motivos de revisión. No aplica ningún FR de `001-emitir-factura.md`.
+      parameters:
+        - name: lote
+          in: path
+          required: true
+          description: Identificador del lote (`RegistroLegado.loteMigracion`).
+          schema:
+            type: string
+        - name: estado
+          in: query
+          required: false
+          description: Filtra los registros por estado.
+          schema:
+            type: string
+            enum: [MIGRADO, PENDIENTE_REVISION]
+      responses:
+        '200':
+          description: Estado y detalle del lote.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/migration.response.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de acceso. Emisión del token, roles y expiración **Pendiente de definir**. Los tokens OSE y certificados nunca se exponen en la API.
+
+  parameters:
+    ComprobanteId:
+      name: id
+      in: path
+      required: true
+      description: Identificador interno del comprobante.
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Error de validación (FR-11). Identifica el campo a corregir.
+      content:
+        application/json:
+          schema:
+            $ref: './schemas/error.response.schema.json'
+          example:
+            code: INVALID_IGV_AFFECTATION_CODE
+            message: El código de afectación IGV '99' no existe en el Catálogo 07.
+            field: items[0].igvAffectationCode
+    Unauthorized:
+      description: Falta el token o no es válido.
+      content:
+        application/json:
+          schema:
+            $ref: './schemas/error.response.schema.json'
+          example:
+            code: UNAUTHORIZED
+            message: Se requiere un token de acceso válido.
+            field: null
+    NotFound:
+      description: El recurso no existe.
+      content:
+        application/json:
+          schema:
+            $ref: './schemas/error.response.schema.json'
+          example:
+            code: NOT_FOUND
+            message: El recurso solicitado no existe.
+            field: null
+    Conflict:
+      description: El recurso ya existe (p. ej. cliente con el mismo documento, producto con el mismo código, serie duplicada).
+      content:
+        application/json:
+          schema:
+            $ref: './schemas/error.response.schema.json'
+          example:
+            code: ALREADY_EXISTS
+            message: Ya existe un registro con el mismo identificador.
+            field: null

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/submission.response.schema.json",
+  "title": "SubmissionResponse",
+  "description": "Resultado de un intento de envío a SUNAT u OSE/PSE (UC-05, UC-06, FR-10). Dominio: entidad EnvioComprobante (specs/domain/modelo-dominio.md §1.8). La respuesta proviene del CDR (documento ApplicationResponse, UBL-ApplicationResponse-2.1.xsd).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "invoiceId", "attemptNumber", "channel", "sentAt", "result", "invoiceStatus"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador interno del intento de envío. Sin correspondencia UBL."
+    },
+    "invoiceId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno del comprobante enviado."
+    },
+    "attemptNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Número de intento (1, 2, 3…)."
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["SUNAT_DIRECTO", "OSE_PSE"],
+      "description": "Destino del envío."
+    },
+    "sentAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha y hora del intento (ISO 8601)."
+    },
+    "result": {
+      "type": "string",
+      "enum": ["SIN_RESPUESTA", "RECIBIDO", "ACEPTADO", "RECHAZADO"],
+      "description": "Resultado del intento. RECIBIDO = el destino recibió el documento pero aún no hay CDR. ACEPTADO/RECHAZADO solo con CDR (FR-10, INV-15)."
+    },
+    "ticket": {
+      "type": "string",
+      "description": "Identificador de procesamiento asíncrono, si el canal lo devuelve."
+    },
+    "responseCode": {
+      "type": "string",
+      "description": "Código de respuesta del CDR. UBL: ApplicationResponse/cac:DocumentResponse/cac:Response/cbc:ResponseCode. Valores SUNAT: Pendiente de verificar."
+    },
+    "responseDescription": {
+      "type": "string",
+      "description": "Descripción de la respuesta del CDR. UBL: ApplicationResponse/cac:DocumentResponse/cac:Response/cbc:Description."
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Observaciones del CDR. UBL: ApplicationResponse/cbc:Note. Que SUNAT ubique ahí las observaciones: Pendiente de verificar."
+    },
+    "errorDetail": {
+      "type": "string",
+      "description": "Error técnico del intento (timeout, conexión). Nunca incluye credenciales ni tokens."
+    },
+    "invoiceStatus": {
+      "type": "string",
+      "enum": ["BORRADOR", "PENDIENTE_ENVIO", "ENVIADO", "ACEPTADO", "RECHAZADO", "ANULADO"],
+      "description": "Estado del comprobante después del intento (modelo-dominio.md §3). Sin respuesta, permanece en PENDIENTE_ENVIO."
+    }
+  }
+}

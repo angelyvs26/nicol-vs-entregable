@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/invoice.response.schema.json",
+  "title": "InvoiceResponse",
+  "description": "Factura registrada con sus totales calculados y su estado (FEAT-001). Dominio: agregado Comprobante (specs/domain/modelo-dominio.md §1.5).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "documentType", "series", "correlative", "currency", "totals", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno del comprobante. No es un valor SUNAT ni corresponde a un elemento UBL."
+    },
+    "documentType": {
+      "type": "string",
+      "const": "01",
+      "description": "Tipo de comprobante: factura, Catálogo 01 código 01. UBL: cbc:InvoiceTypeCode."
+    },
+    "series": {
+      "type": "string",
+      "pattern": "^F[A-Z0-9]{3}$",
+      "description": "Serie de factura. Parte del identificador del comprobante en cbc:ID."
+    },
+    "correlative": {
+      "type": "string",
+      "pattern": "^[0-9]{1,8}$",
+      "description": "Correlativo asignado, hasta 8 dígitos. Parte del identificador del comprobante en cbc:ID. Formato de concatenación serie-correlativo: Pendiente de verificar."
+    },
+    "currency": {
+      "type": "string",
+      "enum": ["PEN", "USD"],
+      "description": "Moneda ISO 4217. UBL: cbc:DocumentCurrencyCode; todos los importes de totals están en esta moneda (@currencyID)."
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taxableBase", "igvAmount", "iscAmount", "totalAmount"],
+      "description": "Totales calculados por CalculadoraTributos (FR-9). Reglas de redondeo: Pendiente de verificar.",
+      "properties": {
+        "taxableBase": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Base imponible del IGV (incluye ISC: valor de venta + ISC, FR-7). UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount del subtotal con Catálogo 05 código 1000."
+        },
+        "igvAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total del IGV. UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount del subtotal con Catálogo 05 código 1000 (cac:TaxScheme/cbc:ID)."
+        },
+        "iscAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total del ISC; 0 si no aplica. UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount del subtotal con Catálogo 05 código 2000."
+        },
+        "icbperAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total del ICBPER; se omite o vale 0 si no aplica (FR-12). UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount del subtotal con Catálogo 05 código 7152. Monto por unidad: Pendiente de verificar."
+        },
+        "totalAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total a pagar. UBL: cac:LegalMonetaryTotal/cbc:PayableAmount. Relación con cbc:TaxInclusiveAmount, descuentos y cargos: Pendiente de verificar."
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["BORRADOR", "PENDIENTE_ENVIO", "ENVIADO", "ACEPTADO", "RECHAZADO", "ANULADO"],
+      "description": "Estado del comprobante (modelo-dominio.md §3). ACEPTADO y RECHAZADO solo con CDR recibido (FR-10); el CDR es un ApplicationResponse (UBL-ApplicationResponse-2.1.xsd) y el resultado se lee de cac:DocumentResponse/cac:Response/cbc:ResponseCode; valores SUNAT de ese código: Pendiente de verificar. Sin respuesta de SUNAT/OSE el estado es PENDIENTE_ENVIO."
+    }
+  },
+  "examples": [
+    {
+      "id": "comprobante-ejemplo",
+      "documentType": "01",
+      "series": "F001",
+      "correlative": "123",
+      "currency": "PEN",
+      "totals": {
+        "taxableBase": 100.00,
+        "igvAmount": 18.00,
+        "iscAmount": 0.00,
+        "totalAmount": 118.00
+      },
+      "status": "PENDIENTE_ENVIO"
+    }
+  ]
+}

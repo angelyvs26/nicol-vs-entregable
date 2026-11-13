@@ -1,0 +1,20 @@
+{
+  "customer": {
+    "documentType": "1",
+    "documentNumber": "12345678",
+    "legalName": "Cliente de ejemplo"
+  },
+  "series": "B001",
+  "correlative": "125",
+  "currency": "PEN",
+  "items": [
+    {
+      "productCode": "BOL-001",
+      "description": "Producto con bolsa plástica",
+      "quantity": 1,
+      "unitSaleValue": 10,
+      "igvAffectationCode": "10",
+      "icbperQuantity": 1
+    }
+  ]
+}

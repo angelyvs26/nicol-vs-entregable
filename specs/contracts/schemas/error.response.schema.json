@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/error.response.schema.json",
+  "title": "ErrorResponse",
+  "description": "Error devuelto por la API (FR-11). Debe identificar el dato a corregir con un mensaje claro. Los códigos de este esquema son internos de la API; no son códigos de error SUNAT ni del CDR (esos códigos: Pendiente de verificar).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message", "field"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "Código de error interno, en mayúsculas con guion bajo. El catálogo completo de códigos se definirá en specs/contracts/api.yaml.",
+      "examples": ["VALIDATION_ERROR", "INVALID_RUC", "INVALID_IGV_AFFECTATION_CODE", "MISSING_ISC_SYSTEM"]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mensaje legible que explica el error y cómo corregirlo. Cuando el error se refiere a un catálogo SUNAT, debe nombrarlo (p. ej. 'Catálogo 07')."
+    },
+    "field": {
+      "type": ["string", "null"],
+      "description": "Ruta del campo de la solicitud que provocó el error, con nombres JSON camelCase en notación de puntos e índices (p. ej. customer.documentNumber, items[0].igvAffectationCode). null si el error no corresponde a un campo concreto (p. ej. SUNAT/OSE no disponible).",
+      "examples": ["customer.documentNumber", "items[0].iscSystem", null]
+    }
+  },
+  "examples": [
+    {
+      "code": "INVALID_IGV_AFFECTATION_CODE",
+      "message": "El código de afectación IGV '99' no existe en el Catálogo 07.",
+      "field": "items[0].igvAffectationCode"
+    },
+    {
+      "code": "MISSING_ISC_SYSTEM",
+      "message": "La línea tiene ISC pero no indica el sistema de cálculo del Catálogo 08.",
+      "field": "items[0].iscSystem"
+    }
+  ]
+}

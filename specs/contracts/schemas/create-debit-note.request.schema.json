@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/create-debit-note.request.schema.json",
+  "title": "CreateDebitNoteRequest",
+  "description": "Solicitud para emitir nota de débito UBL DebitNote (Catálogo 01 código 08). originalDocumentId es obligatorio. Motivo según Catálogo 10; códigos posteriores a 2017: Pendiente de verificar.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "originalDocumentId",
+    "reasonCode",
+    "reasonDescription",
+    "currency",
+    "items"
+  ],
+  "properties": {
+    "originalDocumentId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno del comprobante original existente. El sistema lo resuelve a su identificador UBL para cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID."
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "01",
+        "02",
+        "03"
+      ],
+      "description": "Motivo de la nota según el Catálogo 10 (RS 245-2017, Anexo E) SUNAT. UBL: cac:DiscrepancyResponse/cbc:ResponseCode."
+    },
+    "reasonDescription": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Sustento del motivo. UBL: cac:DiscrepancyResponse/cbc:Description (una sola descripción). Longitud máxima SUNAT: Pendiente de verificar; 500 es un límite del proyecto.",
+      "maxLength": 500
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "PEN",
+        "USD"
+      ],
+      "description": "Moneda del documento; debe ser compatible con el comprobante original. Códigos ISO 4217 aportados para el proyecto."
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Líneas para cac:DebitNoteLine. El XSD UBL requiere al menos una línea.",
+      "items": {
+        "$ref": "create-invoice.request.schema.json#/$defs/invoiceItem"
+      }
+    }
+  }
+}

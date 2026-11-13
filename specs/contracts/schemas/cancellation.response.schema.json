@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/cancellation.response.schema.json",
+  "title": "CancellationResponse",
+  "description": "Solicitud de anulación registrada y mecanismo de comunicación seleccionado (FEAT-004).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "comprobanteId", "mechanism", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno de la solicitud de anulación."
+    },
+    "comprobanteId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno del comprobante objetivo."
+    },
+    "mechanism": {
+      "type": "string",
+      "enum": ["COMUNICACION_BAJA", "RESUMEN_DIARIO"],
+      "description": "Mecanismo seleccionado por tipo: factura = comunicación de baja; boleta = resumen diario. Estructura normativa y plazos: Pendiente de verificar."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PENDIENTE_ENVIO", "ENVIADO", "ACEPTADO", "RECHAZADO", "ANULADO"],
+      "description": "Estado del comprobante/solicitud. PENDIENTE_ENVIO no confirma la anulación; ANULADO requiere confirmación válida."
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/cancel-comprobante.request.schema.json",
+  "title": "CancelComprobanteRequest",
+  "description": "Solicitud de anulación de un comprobante existente (FEAT-004, UC-08).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Motivo informado por el administrador. Catálogo y correspondencia normativa: Pendiente de verificar."
+    }
+  }
+}

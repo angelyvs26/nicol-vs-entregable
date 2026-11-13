@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/migration.response.schema.json",
+  "title": "MigrationResponse",
+  "description": "Estado y resultado de un lote de migración del legado (UC-16). Dominio: RegistroLegado y MovimientoAlmacen (specs/domain/mapeo-legado.md). Sin correspondencia UBL: los registros legados no generan comprobantes electrónicos.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["batchId", "status", "rowsRead", "migratedCount", "pendingReviewCount"],
+  "properties": {
+    "batchId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador del lote (RegistroLegado.loteMigracion)."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["EN_PROCESO", "COMPLETADO"],
+      "description": "Estado del procesamiento del lote."
+    },
+    "rowsRead": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Filas leídas. Invariante: rowsRead = migratedCount + pendingReviewCount cuando status = COMPLETADO."
+    },
+    "migratedCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Registros en estado MIGRADO."
+    },
+    "pendingReviewCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Registros en estado PENDIENTE_REVISION. Nunca se descartan."
+    },
+    "pendingByReason": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Cantidad de registros pendientes por motivo. Un registro puede tener varios motivos.",
+      "properties": {
+        "PRODUCTO_INEXISTENTE": { "type": "integer", "minimum": 0 },
+        "DOCUMENTO_DUPLICADO": { "type": "integer", "minimum": 0 },
+        "FECHA_INVALIDA": { "type": "integer", "minimum": 0 },
+        "CANTIDAD_INVALIDA": { "type": "integer", "minimum": 0 },
+        "SIN_MOVIMIENTO": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "records": {
+      "type": "array",
+      "description": "Detalle de registros del lote (en GET). Paginación: Pendiente de definir.",
+      "items": { "$ref": "#/$defs/legacyRecord" }
+    }
+  },
+  "$defs": {
+    "legacyRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceId", "status", "originalData"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Identificador interno del RegistroLegado."
+        },
+        "sourceId": {
+          "type": "string",
+          "description": "Id de la fila en el legado o nombreArchivo#numeroFila (RegistroLegado.idOrigen)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["MIGRADO", "PENDIENTE_REVISION"],
+          "description": "Estado del registro."
+        },
+        "reviewReasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["PRODUCTO_INEXISTENTE", "DOCUMENTO_DUPLICADO", "FECHA_INVALIDA", "CANTIDAD_INVALIDA", "SIN_MOVIMIENTO"]
+          },
+          "description": "Motivos de revisión (RegistroLegado.motivosRevision)."
+        },
+        "originalData": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Datos originales sin transformar (RegistroLegado.datosOriginales). Excepción a la convención camelCase: se conservan los nombres de campo del sistema legado para no perder trazabilidad.",
+          "properties": {
+            "fecha": { "type": ["string", "null"] },
+            "ingreso": { "type": ["string", "null"] },
+            "salida": { "type": ["string", "null"] },
+            "producto": { "type": ["string", "null"] },
+            "nro_documento": { "type": ["string", "null"] }
+          }
+        },
+        "warehouseMovementIds": {
+          "type": "array",
+          "maxItems": 2,
+          "items": { "type": "string", "format": "uuid" },
+          "description": "MovimientoAlmacen generados (0, 1 o 2)."
+        }
+      }
+    }
+  }
+}

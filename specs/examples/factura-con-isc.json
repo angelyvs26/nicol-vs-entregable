@@ -1,0 +1,21 @@
+{
+  "customer": {
+    "documentType": "6",
+    "documentNumber": "20123456789",
+    "legalName": "Comercial Ejemplo S.A.C."
+  },
+  "series": "F001",
+  "correlative": "124",
+  "currency": "PEN",
+  "items": [
+    {
+      "productCode": "BEB-001",
+      "description": "Bebida sujeta a ISC",
+      "quantity": 1,
+      "unitSaleValue": 100,
+      "igvAffectationCode": "10",
+      "iscSystem": "01",
+      "iscRate": 15
+    }
+  ]
+}

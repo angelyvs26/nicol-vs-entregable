@@ -1,0 +1,18 @@
+{
+  "customer": {
+    "documentType": "6",
+    "documentNumber": "20123456789",
+    "legalName": "Comercial Ejemplo S.A.C."
+  },
+  "series": "F001",
+  "correlative": "127",
+  "currency": "PEN",
+  "items": [
+    {
+      "description": "Producto con código de afectación desconocido",
+      "quantity": 1,
+      "unitSaleValue": 20,
+      "igvAffectationCode": "99"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/series.schema.json",
+  "title": "Series",
+  "description": "Serie de numeración de comprobantes (UC-11). Dominio: entidad Serie (specs/domain/modelo-dominio.md §1.4). Serie y correlativo forman cbc:ID del comprobante.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["documentType", "code", "active"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "readOnly": true,
+      "description": "Identificador interno asignado por el sistema. Sin correspondencia UBL."
+    },
+    "documentType": {
+      "type": "string",
+      "enum": ["01", "03"],
+      "description": "Tipo de comprobante de la serie, Catálogo 01. UBL: cbc:InvoiceTypeCode. Factura: 01; boleta: 03."
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[FB][A-Z0-9]{3}$",
+      "description": "Código de serie: factura F o boleta B, seguida de 3 caracteres alfanuméricos. Parte de cbc:ID. Admisión de minúsculas: Pendiente de verificar."
+    },
+    "lastCorrelative": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999,
+      "readOnly": true,
+      "description": "Último correlativo asignado (0 si ninguno); hasta 8 dígitos. Parte de cbc:ID. Reglas de secuencia: Pendiente de verificar."
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Solo las series activas pueden emitir. Sin correspondencia UBL."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "documentType": { "const": "01" } },
+        "required": ["documentType"]
+      },
+      "then": {
+        "properties": { "code": { "pattern": "^F[A-Z0-9]{3}$" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "documentType": { "const": "03" } },
+        "required": ["documentType"]
+      },
+      "then": {
+        "properties": { "code": { "pattern": "^B[A-Z0-9]{3}$" } }
+      }
+    }
+  ]
+}

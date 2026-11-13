@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/customer.schema.json",
+  "title": "Customer",
+  "description": "Cliente (adquirente) del comprobante. Dominio: entidad Cliente (specs/domain/modelo-dominio.md §1.2). UBL: cac:AccountingCustomerParty/cac:Party.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "documentType",
+    "legalName"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "readOnly": true,
+      "description": "Identificador interno asignado por el sistema. Sin correspondencia UBL. No se envía al crear ni dentro de una factura."
+    },
+    "documentType": {
+      "type": "string",
+      "enum": [
+        "0",
+        "1",
+        "4",
+        "6",
+        "7"
+      ],
+      "description": "Tipo de documento de identidad. Catálogo SUNAT 06 (RS 245-2017, Anexo E): 0 = Doc. tributario no domiciliado sin RUC, 1 = DNI, 4 = Carnet de extranjería, 6 = RUC, 7 = Pasaporte. UBL: atributo @schemeID de cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID. Supuesto provisional: el proyecto usa 0 para un cliente de boleta sin documento y omite documentNumber; el código correcto para ese caso: Pendiente de verificar."
+    },
+    "documentNumber": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Número de documento de identidad. UBL: cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID. Si documentType = 6 (RUC): 11 dígitos con dígito verificador (algoritmo: Pendiente de verificar). Si documentType = 1 (DNI): 8 dígitos. Formato de los tipos 0, 4 y 7: Pendiente de verificar."
+    },
+    "legalName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nombre o razón social del cliente. UBL: cac:AccountingCustomerParty/cac:Party/cac:PartyLegalEntity/cbc:RegistrationName. Longitud máxima: Pendiente de verificar."
+    },
+    "address": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Dirección del cliente. UBL: cac:Party/cac:PartyLegalEntity/cac:RegistrationAddress. Estructura de subelementos y obligatoriedad: Pendiente de verificar."
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Correo para enviar la representación impresa. Sin correspondencia UBL."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "documentType": {
+            "const": "0"
+          }
+        },
+        "required": [
+          "documentType"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "documentNumber"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "documentNumber"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "documentType": {
+            "const": "6"
+          }
+        },
+        "required": [
+          "documentType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "documentNumber": {
+            "pattern": "^[0-9]{11}$",
+            "description": "RUC: 11 dígitos (Catálogo 06 código 6). La validación del dígito verificador se aplica en el dominio (objeto de valor Ruc); algoritmo: Pendiente de verificar."
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "documentType": {
+            "const": "1"
+          }
+        },
+        "required": [
+          "documentType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "documentNumber": {
+            "pattern": "^[0-9]{8}$",
+            "description": "DNI: 8 dígitos (Catálogo 06 código 1)."
+          }
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "documentType": "6",
+      "documentNumber": "20123456789",
+      "legalName": "Cliente de ejemplo"
+    }
+  ]
+}

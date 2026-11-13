@@ -1,0 +1,15 @@
+{
+  "originalDocumentId": "F001-123",
+  "reasonCode": "07",
+  "reasonDescription": "Devolución de 1 unidad del producto ABR-001",
+  "currency": "PEN",
+  "items": [
+    {
+      "productCode": "ABR-001",
+      "description": "Producto gravado",
+      "quantity": 1,
+      "unitSaleValue": 50,
+      "igvAffectationCode": "10"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/receipt.response.schema.json",
+  "title": "ReceiptResponse",
+  "description": "Boleta registrada con sus totales calculados y su estado (FEAT-002). Dominio: agregado Comprobante (specs/domain/modelo-dominio.md §1.5).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "documentType", "series", "correlative", "currency", "totals", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno del comprobante. No es un valor SUNAT ni corresponde a un elemento UBL."
+    },
+    "documentType": {
+      "type": "string",
+      "const": "03",
+      "description": "Tipo de comprobante: boleta, Catálogo 01 código 03. UBL: cbc:InvoiceTypeCode."
+    },
+    "series": {
+      "type": "string",
+      "pattern": "^B[A-Z0-9]{3}$",
+      "description": "Serie de boleta. Parte del identificador del comprobante en cbc:ID."
+    },
+    "correlative": {
+      "type": "string",
+      "pattern": "^[0-9]{1,8}$",
+      "description": "Correlativo asignado, hasta 8 dígitos. Parte del identificador del comprobante en cbc:ID. Formato de concatenación serie-correlativo: Pendiente de verificar."
+    },
+    "currency": {
+      "type": "string",
+      "enum": ["PEN", "USD"],
+      "description": "Moneda ISO 4217. UBL: cbc:DocumentCurrencyCode; todos los importes de totals están en esta moneda (@currencyID)."
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taxableBase", "igvAmount", "iscAmount", "totalAmount"],
+      "description": "Totales calculados. Reglas de redondeo: Pendiente de verificar.",
+      "properties": {
+        "taxableBase": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Base imponible del IGV. UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount del subtotal con Catálogo 05 código 1000."
+        },
+        "igvAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total del IGV. UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount del subtotal con Catálogo 05 código 1000."
+        },
+        "iscAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total del ISC; 0 si no aplica. UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount del subtotal con Catálogo 05 código 2000."
+        },
+        "icbperAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total del ICBPER; se omite o vale 0 si no aplica. UBL: cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount del subtotal con Catálogo 05 código 7152. Monto por unidad: Pendiente de verificar."
+        },
+        "totalAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Importe total a pagar. UBL: cac:LegalMonetaryTotal/cbc:PayableAmount. Relación con cbc:TaxInclusiveAmount, descuentos y cargos: Pendiente de verificar."
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["BORRADOR", "PENDIENTE_ENVIO", "ENVIADO", "ACEPTADO", "RECHAZADO", "ANULADO"],
+      "description": "Estado del comprobante. ACEPTADO y RECHAZADO solo con CDR recibido; sin respuesta de SUNAT/OSE el estado es PENDIENTE_ENVIO."
+    }
+  }
+}

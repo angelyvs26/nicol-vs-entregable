@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.abc-software.example/facturacion/note.response.schema.json",
+  "title": "NoteResponse",
+  "description": "Nota de crédito o débito registrada, vinculada a un comprobante original (FEAT-003).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "documentType", "originalDocumentId", "series", "correlative", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno de la nota."
+    },
+    "documentType": {
+      "type": "string",
+      "enum": ["07", "08"],
+      "description": "Tipo de nota: crédito Catálogo 01 código 07 o débito código 08. Cotejo oficial pendiente."
+    },
+    "originalDocumentId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador interno del comprobante original referido."
+    },
+    "series": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Serie asignada a la nota. Formato SUNAT: Pendiente de verificar."
+    },
+    "correlative": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Correlativo asignado a la nota. Formato y secuencia: Pendiente de verificar."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["BORRADOR", "PENDIENTE_ENVIO", "ENVIADO", "ACEPTADO", "RECHAZADO", "ANULADO"],
+      "description": "Estado de la nota. ACEPTADO/RECHAZADO solo con respuesta válida de SUNAT/OSE."
+    }
+  }
+}

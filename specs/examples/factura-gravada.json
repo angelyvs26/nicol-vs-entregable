@@ -1,0 +1,19 @@
+{
+  "customer": {
+    "documentType": "6",
+    "documentNumber": "20123456789",
+    "legalName": "Comercial Ejemplo S.A.C."
+  },
+  "series": "F001",
+  "correlative": "123",
+  "currency": "PEN",
+  "items": [
+    {
+      "productCode": "ABR-001",
+      "description": "Producto gravado",
+      "quantity": 2,
+      "unitSaleValue": 50,
+      "igvAffectationCode": "10"
+    }
+  ]
+}
